@@ -1,10 +1,10 @@
 const express = require("express")
 const Client = require("../models/Client.js")
 const router = express.Router()
-
+const adminAuth = require("../middleware/adminAuth.js")
 //OWNER GET ALL CLIENTS (admin only)
 //GET /clients
-router.get("/", async (req, res) =>{
+router.get("/", adminAuth, async (req, res) =>{
     try{
         const clients = await(Client.find({}).sort({createdAt: -1}))
         res.json(clients)
@@ -61,15 +61,17 @@ router.get("/", async (req, res) =>{
 
 
 
-
-
+// OWNER create new client (admin only)
 // OWNER: create a new client with their name, services, and prices
 // POST /clients
-router.post("/", async (req, res) => {
+router.post("/", adminAuth, async (req, res) => {
     try{
-        const {name, services} = req.body // ★ destructure name and services from the request body(req.body is the incoming data from whoever is making the request (you, the owner, sending a POST request to create a new client))
-        const client = await Client.create({name, services})
+        const {name, services, durationMinutes, isMobile, bufferMinutes} = req.body // ★ destructure name and services from the request body(req.body is the incoming data from whoever is making the request (you, the owner, sending a POST request to create a new client))
+            console.log("POST services:", services)
+
+        const client = await Client.create({name, services, durationMinutes, isMobile, bufferMinutes})
         res.json(client)// ★ returns the full client record including the auto-generated bookingToken
+    
     }catch(err){
         res.status(500).json({error: err.message})
     }
@@ -83,7 +85,9 @@ router.get("/booking/:token", async (req, res) => {
         if (!client) return res.status(404).json({error: "Invalid booking link."})
             res.json({
                 name: client.name,
-                services: client.services // ★ only her own services — no other client data ever sent
+                services: client.services, // ★ only her own services — no other client data ever sent
+                durationMinutes: client.durationMinutes,
+                bufferMinutes: client.bufferMinutes
             })
     }catch(err){
         res.status(500).json({error: err.message})
@@ -103,6 +107,22 @@ router.post("/:token/subscription", async (req, res) => {
             {pushSubscription: subscription},  // step 2: UPDATE — what to change? ★ save the subscription object
             {new: true}// return the updated document, not the old one
         )
+    }catch(err){
+        res.status(500).json({error: err.message})
+    }
+})
+
+// OWNER update client's info (admin only)
+// OWNER: update a client's duration, mobile status, or buffer
+// PATCH /clients/:id
+router.patch("/:id", adminAuth, async (req, res) => {
+    try{
+        const {durationMinutes, isMobile, bufferMinutes, services} = req.body
+        const update = await Client.findByIdAndUpdate(req.params.id, 
+                    {durationMinutes, isMobile, bufferMinutes, services},
+                    {returnDocument: "after"}//to show updated data
+        )
+        res.json(update)
     }catch(err){
         res.status(500).json({error: err.message})
     }

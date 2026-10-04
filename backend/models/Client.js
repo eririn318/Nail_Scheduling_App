@@ -8,10 +8,21 @@ const clientSchema = new mongoose.Schema(
             {
                 name: {type: String, required: true}, //service name, ex: gel manicure
                 price: {type: Number, required: true},
+
+                durationMinutes: {type: Number, required: true}, //total appointment length, set by you
+                isMobile: {type: Boolean, default: false}, //whether this client gets a house call
+                bufferMinutes: {type: Number, default: 0}, //extra gap time (for mobile travel, or just breathing room between clients)
+
+                serviceId: {
+                    type: String,
+                    default: () => crypto.randomBytes(4).toString("hex")
+                }
             }
         ],
-        bookingToken: {
-            type: String,
+        
+
+        bookingToken: {//will generate automatically, it will show in the postman return and mongoDB database
+                  type: String,
             default: () => crypto.randomBytes(8).toString("hex"),
             unique: true, 
         }, 

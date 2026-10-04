@@ -82,7 +82,7 @@ router.patch("/:bookingId/cancel", async(req, res)=>{
     if(!booking) return res.status(404).json({error: "Booking not found"})
 
     //check if appointment is less than 48hours away
-    const appointmentDateTime = new Date(`$105{booking.date} ${booking.time}`)
+    const appointmentDateTime = new Date(`${booking.date} ${booking.time}`)
     const now = new Date()
     const hoursUntilAppointment = (appointmentDateTime - now) / (1000*60*60)         // ★ (appointmentDateTime - now) gives milliseconds difference
         // ★ divide by (1000 * 60 * 60) converts milliseconds → hours
@@ -108,7 +108,8 @@ router.patch("/:bookingId/cancel", async(req, res)=>{
         //PATCH: /bookings/:bookingId/reschedule
         router.patch("/:bookingId/reschedule", async(req, res)=>{
             try{
-                const booking = await Booking.findByIdAndUpdate(req.params.bookingId)
+                // const booking = await Booking.findByIdAndUpdate(req.params.bookingId)
+                const booking = await Booking.findById(req.params.bookingId) // ★ fixed: was findByIdAndUpdate with no update object, so it silently did nothing. This line's only job here is to FETCH the booking so we can check the 48-hour window — the actual update happens later in the function with the real findByIdAndUpdate call.
                 if(!booking) return res.status(404).json({error: "Booking not found"})
 
                 //48 hours check

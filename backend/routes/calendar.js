@@ -9,7 +9,7 @@ const router = express.Router()
 const BUSINESS_TIMEZONE = "America/Los_Angeles"
 const BUSINESS_START_HOUR = 9
 const BUSINESS_END_HOUR  = 17
-const SLOT_LENGTH_MINUTES = 60
+// const SLOT_LENGTH_MINUTES = 60
 
 //load your saved token into oauth2Client before any Calendar call
 async function loadCredential() {
@@ -30,6 +30,12 @@ router.get("/available", async (req, res) => {
         await loadCredential()
         const calendar = google.calendar({version: "v3", auth: oauth2Client})
         const {date} = req.query
+        const {durationMinutes} = req.query //destructing===get req.query and put it into durationMinutes
+        const durationMinutesNum = Number(durationMinutes)//req.query is String, so need to change it to Number
+        const {bufferMinutes} = req.query
+        const bufferMinutesNum = Number(bufferMinutes)
+        const totalDuration = durationMinutesNum + bufferMinutesNum
+
 
         // Build "9am Pacific" and "5pm Pacific" for this specific date, correctly
         // it tells Luxon explicitly "interpret this date as Pacific time," and .toUTC() converts it correctly to whatever UTC time that actually corresponds to — including automatically adjusting for daylight saving, which a hardcoded "+7 hours" never could.
@@ -43,18 +49,33 @@ router.get("/available", async (req, res) => {
                 items: [{id: "primary"}] //"primary" = your main calendar
                 }
         })
-                const busyBlocks = result.data.calendars.primary.busy.map((b) => ({
+                const busyBlocks = result.data.calendars.primary.busy.map((b) => ({//.busy is array of time ranges Google's own API decided to name "busy"
+                    //ex:{
+                    //   "calendars": {
+                    //     "primary": {
+                    //       "busy": [
+                    //         { "start": "2026-07-01T14:00:00Z", "end": "2026-07-01T15:00:00Z" },
+                    //         { "start": "2026-07-01T16:30:00Z", "end": "2026-07-01T17:00:00Z" }
+                    //       ]
+                    //     }
+                    //   }
+                    // }
+                
                     start: DateTime.fromISO(b.start),
                     end: DateTime.fromISO(b.end)
                 })
                 )
+
+                console.log("DEBUG busyBlocks:", busyBlocks) // ★ temporary — see what's actually blocking the day
+console.log("DEBUG totalDuration:", totalDuration) // ★ temporary — confirm the gap size being searched for
+
         // Walk through the day in fixed-length slots, skipping any that overlap a busy block
                 const openSlots = []
                 let cursor = dayStart
                 console.log("DEBUG dayStart:", dayStart.toISO(), "valid?", dayStart.isValid, "reason:", dayStart.invalidReason)
 
-                while (cursor.plus({minutes: SLOT_LENGTH_MINUTES}) <= dayEnd){
-                    const slotEnd = cursor.plus({minutes:SLOT_LENGTH_MINUTES}) //.plus() is a method that adds time (or another duration) to a date/time object.ex "2026-06-26T09:00" ->  2026-06-26T09:30:00
+                while (cursor.plus({minutes: totalDuration}) <= dayEnd){
+                    const slotEnd = cursor.plus({minutes:totalDuration}) //.plus() is a method that adds time (or another duration) to a date/time object.ex "2026-06-26T09:00" ->  2026-06-26T09:30:00
                     const overlaps =  busyBlocks.some(b => cursor < b.end && slotEnd > b.start) //The slot starts before the busy block ends AND the slot ends after the busy block starts. If both are true, the two time ranges overlap.
                     if(!overlaps){
                         openSlots.push(cursor.toFormat("h:mm a")) // e.g. "9:30 AM"

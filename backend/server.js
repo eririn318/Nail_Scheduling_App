@@ -17,7 +17,7 @@ app.use(cors())
 app.use(express.json())
 
 // protected routes — require admin password
-app.use("/clients", adminAuth, clientRoutes) //client routes
+app.use("/clients", clientRoutes) //client routes -> clients does not need password, so no adminAuth
 app.use("/payments", adminAuth, paymentRoutes) //payment routes
 app.use("/bookings/pending", adminAuth) //booking/pending routes
 app.use("/bookings/confirmed", adminAuth) //booking/confirmed routes
